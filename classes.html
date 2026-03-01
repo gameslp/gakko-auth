@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Weekly Classes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117; color: #e1e4e8;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    .header {
+      margin-bottom: 20px;
+    }
+
+    h1 { font-size: 24px; color: #fff; margin-bottom: 8px; }
+    .sub { font-size: 13px; color: #6e7681; margin-bottom: 16px; }
+
+    #loading {
+      text-align: center;
+      padding: 40px;
+      color: #6e7681;
+      font-size: 14px;
+    }
+
+    .spinner {
+      border: 3px solid #30363d;
+      border-top: 3px solid #58a6ff;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    #error {
+      background: #3d1e1e;
+      border: 1px solid #f85149;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 16px 0;
+      color: #f85149;
+      font-size: 14px;
+      display: none;
+    }
+
+    .week-selector {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 12px 16px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+    }
+
+    .week-selector button {
+      background: #21262d;
+      color: #e1e4e8;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+
+    .week-selector button:hover {
+      background: #30363d;
+    }
+
+    .week-selector span {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: #58a6ff;
+    }
+
+    .timetable-container {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .timetable {
+      min-width: 600px;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .timetable th {
+      background: #0d1117;
+      color: #58a6ff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 8px;
+      border: 1px solid #30363d;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .timetable th.time-col {
+      width: 100px;
+      background: #0d1117;
+    }
+
+    .timetable th.day-col {
+      min-width: 140px;
+    }
+
+    .timetable td {
+      border: 1px solid #30363d;
+      padding: 4px;
+      vertical-align: top;
+      height: 60px;
+      position: relative;
+    }
+
+    .timetable td.time-cell {
+      background: #0d1117;
+      color: #8b949e;
+      font-size: 11px;
+      text-align: center;
+      font-weight: 600;
+      padding: 8px 4px;
+    }
+
+    .timetable td.empty {
+      background: #0d1117;
+    }
+
+    .class-block {
+      background: linear-gradient(135deg, #1f6feb 0%, #1a5cd7 100%);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #fff;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+    }
+
+    .class-block:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(31, 111, 235, 0.4);
+    }
+
+    .class-block.remote {
+      background: linear-gradient(135deg, #f85149 0%, #d73a49 100%);
+    }
+
+    .class-time {
+      font-weight: 700;
+      font-size: 10px;
+      opacity: 0.9;
+    }
+
+    .class-name {
+      font-weight: 600;
+      font-size: 12px;
+      line-height: 1.2;
+      margin: 2px 0;
+    }
+
+    .class-details {
+      font-size: 10px;
+      opacity: 0.85;
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .class-type-badge {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 9px;
+      font-weight: 600;
+    }
+
+    .no-classes {
+      text-align: center;
+      padding: 60px 20px;
+      color: #6e7681;
+      font-size: 14px;
+    }
+
+    .legend {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+    }
+
+    .legend-color.normal {
+      background: linear-gradient(135deg, #1f6feb 0%, #1a5cd7 100%);
+    }
+
+    .legend-color.remote {
+      background: linear-gradient(135deg, #f85149 0%, #d73a49 100%);
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      h1 {
+        font-size: 20px;
+      }
+
+      .week-selector {
+        padding: 10px 12px;
+      }
+
+      .week-selector button {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+
+      .week-selector span {
+        font-size: 12px;
+      }
+
+      .timetable-container {
+        padding: 8px;
+        margin: 0 -12px;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+      }
+
+      .timetable {
+        min-width: 500px;
+      }
+
+      .timetable th {
+        font-size: 11px;
+        padding: 8px 4px;
+      }
+
+      .timetable th.time-col {
+        width: 60px;
+      }
+
+      .timetable th.day-col {
+        min-width: 100px;
+      }
+
+      .timetable td {
+        height: 50px;
+      }
+
+      .class-block {
+        padding: 4px 6px;
+        font-size: 10px;
+      }
+
+      .class-name {
+        font-size: 10px;
+      }
+
+      .class-details {
+        font-size: 9px;
+      }
+
+      .legend {
+        font-size: 11px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .week-selector {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .week-selector button {
+        width: 100%;
+      }
+
+      .week-selector span {
+        order: -1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📚 My Weekly Classes</h1>
+    <p class="sub">PJWSTK Schedule - Timetable View</p>
+  </div>
+
+  <div class="week-selector">
+    <button onclick="changeWeek(-1)">← Previous</button>
+    <span id="week-label">Loading...</span>
+    <button onclick="changeWeek(1)">Next →</button>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <p>Loading your timetable...</p>
+  </div>
+
+  <div id="error"></div>
+
+  <div id="no-classes" class="no-classes" style="display: none;">
+    No classes scheduled for this week 📅
+  </div>
+
+  <div id="timetable-wrapper" style="display: none;">
+    <div class="timetable-container">
+      <table class="timetable" id="timetable">
+        <!-- Generated dynamically -->
+      </table>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-color normal"></div>
+        <span>On-campus class</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color remote"></div>
+        <span>Remote class</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const https = require('https');
+
+    let currentWeekStart = getMonday(new Date());
+    let cookieHeader = '';
+
+    // Wait for cookie data from main process
+    ipcRenderer.on('cookie-data', (event, data) => {
+      cookieHeader = data.cookieHeader;
+      loadClasses();
+    });
+
+    // Request cookie data on load
+    ipcRenderer.send('request-cookie-data');
+
+    function getMonday(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    }
+
+    function formatDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDateDisplay(dateStr) {
+      const date = new Date(dateStr);
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = days[date.getDay()];
+      const day = date.getDate();
+      const month = date.getMonth() + 1;
+      return `${dayName} ${day}/${month}`;
+    }
+
+    function changeWeek(offset) {
+      currentWeekStart.setDate(currentWeekStart.getDate() + (offset * 7));
+      loadClasses();
+    }
+
+    async function loadClasses() {
+      if (!cookieHeader) {
+        showError('No authentication cookie available. Please login first.');
+        return;
+      }
+
+      const weekStart = formatDate(currentWeekStart);
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+
+      document.getElementById('week-label').textContent =
+        `${formatDate(currentWeekStart)} - ${formatDate(weekEnd)}`;
+
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('timetable-wrapper').style.display = 'none';
+      document.getElementById('no-classes').style.display = 'none';
+
+      try {
+        const classes = await makeRequest(weekStart);
+        displayTimetable(classes);
+
+      } catch (error) {
+        showError(`Failed to load classes: ${error.message}`);
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+      }
+    }
+
+    function makeRequest(weekStart) {
+      return new Promise((resolve, reject) => {
+        const options = {
+          hostname: 'gakko.pjwstk.edu.pl',
+          path: `/apiv2/api/attendance/student/week?weekStartDate=${weekStart}`,
+          method: 'GET',
+          headers: {
+            'Cookie': cookieHeader,
+          },
+        };
+
+        const req = https.request(options, (res) => {
+          let data = '';
+
+          res.on('data', (chunk) => {
+            data += chunk;
+          });
+
+          res.on('end', () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              try {
+                const json = JSON.parse(data);
+                resolve(json);
+              } catch (e) {
+                reject(new Error(`Failed to parse response: ${e.message}`));
+              }
+            } else {
+              reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
+            }
+          });
+        });
+
+        req.on('error', (error) => {
+          reject(error);
+        });
+
+        req.end();
+      });
+    }
+
+    function displayTimetable(classes) {
+      const timetableWrapper = document.getElementById('timetable-wrapper');
+      const noClassesDiv = document.getElementById('no-classes');
+
+      if (!classes || classes.length === 0) {
+        timetableWrapper.style.display = 'none';
+        noClassesDiv.style.display = 'block';
+        return;
+      }
+
+      // Hide no-classes message and show timetable
+      noClassesDiv.style.display = 'none';
+
+      // Get all unique days and times
+      const daysMap = {};
+      const timeSlotsSet = new Set();
+
+      classes.forEach(cls => {
+        const date = cls.date.split('T')[0];
+        if (!daysMap[date]) {
+          daysMap[date] = [];
+        }
+        daysMap[date].push(cls);
+        timeSlotsSet.add(cls.startTime.substring(0, 5));
+      });
+
+      // Sort days chronologically
+      const sortedDays = Object.keys(daysMap).sort();
+
+      // Generate time slots from 8:00 to 20:00
+      const timeSlots = Array.from(timeSlotsSet).sort();
+
+      // Build table HTML
+      let html = '<thead><tr><th class="time-col">Time</th>';
+
+      // Header row with days
+      sortedDays.forEach(date => {
+        html += `<th class="day-col">${formatDateDisplay(date)}</th>`;
+      });
+
+      html += '</tr></thead><tbody>';
+
+      // Create rows for each time slot
+      timeSlots.forEach(timeSlot => {
+        html += `<tr><td class="time-cell">${timeSlot}</td>`;
+
+        sortedDays.forEach(date => {
+          // Find class for this day and time
+          const dayClasses = daysMap[date] || [];
+          const classAtTime = dayClasses.find(cls => cls.startTime.substring(0, 5) === timeSlot);
+
+          if (classAtTime) {
+            const remoteClass = classAtTime.isRemote ? 'remote' : '';
+            html += `
+              <td>
+                <div class="class-block ${remoteClass}" title="${classAtTime.subjectName}">
+                  <div class="class-time">${classAtTime.startTime.substring(0, 5)} - ${classAtTime.endTime.substring(0, 5)}</div>
+                  <div class="class-name">${classAtTime.subjectName}</div>
+                  <div class="class-details">
+                    <span class="class-type-badge">${classAtTime.classType}</span>
+                    <span>📍 ${classAtTime.room}</span>
+                  </div>
+                </div>
+              </td>
+            `;
+          } else {
+            html += '<td class="empty"></td>';
+          }
+        });
+
+        html += '</tr>';
+      });
+
+      html += '</tbody>';
+
+      document.getElementById('timetable').innerHTML = html;
+      timetableWrapper.style.display = 'block';
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = `⚠️ ${message}`;
+      errorDiv.style.display = 'block';
+      document.getElementById('timetable-wrapper').style.display = 'none';
+      document.getElementById('no-classes').style.display = 'none';
+    }
+  </script>
+</body>
+</html>

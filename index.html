@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Gakko Auth</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117; color: #e1e4e8;
+      height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    h1 { font-size: 20px; color: #fff; margin-bottom: 4px; }
+    .sub { font-size: 13px; color: #6e7681; margin-bottom: 28px; }
+    #status {
+      background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+      padding: 20px; width: 100%; max-width: 440px; min-height: 110px;
+      display: flex; flex-direction: column; justify-content: center; margin-bottom: 16px;
+    }
+    .idle { color: #6e7681; font-size: 14px; text-align: center; }
+    .row { font-size: 12px; font-family: monospace; color: #8b949e; margin: 3px 0; }
+    .row span { color: #58a6ff; }
+    .label { font-size: 11px; color: #3fb950; font-weight: 600; margin-bottom: 8px; }
+    .cookie-box {
+      margin-top: 10px; background: #0d1117; border: 1px solid #30363d;
+      border-radius: 6px; padding: 8px; font-size: 10px; font-family: monospace;
+      color: #6e7681; word-break: break-all; max-height: 55px; overflow: hidden;
+    }
+    button {
+      background: #238636; color: #fff; border: none; border-radius: 8px;
+      padding: 11px 0; font-size: 14px; font-weight: 600; cursor: pointer;
+      width: 100%; max-width: 440px; transition: background .2s;
+    }
+    button:hover { background: #2ea043; }
+    button:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+    .copy-btn {
+      background: #21262d; color: #8b949e; border: 1px solid #30363d;
+      border-radius: 6px; padding: 5px 12px; font-size: 11px;
+      cursor: pointer; margin-top: 8px; width: auto;
+    }
+    .copy-btn:hover { background: #30363d; color: #e1e4e8; }
+    .warn { font-size: 11px; color: #e3b341; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>🎓 Gakko Auth</h1>
+  <p class="sub">PJWSTK session interceptor</p>
+
+  <div id="status">
+    <div class="idle">Naciśnij przycisk aby się zalogować</div>
+  </div>
+
+  <button id="btn" onclick="startLogin()">🔐 Połącz konto Gakko</button>
+  <button id="viewClassesBtn" onclick="viewClasses()" style="display: none; margin-top: 12px;">📚 View My Classes</button>
+  <p class="warn">⚠️ Tylko do celów deweloperskich</p>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    let savedCookieHeader = '';
+
+    function startLogin() {
+      document.getElementById('btn').disabled = true;
+      document.getElementById('btn').textContent = '⏳ Czekam na logowanie...';
+      document.getElementById('status').innerHTML = '<div class="idle">Zaloguj się w oknie przeglądarki...</div>';
+      ipcRenderer.send('start-login');
+    }
+
+    ipcRenderer.on('session-ready', (event, data) => {
+      savedCookieHeader = data.cookieHeader;
+      const preview = data.cookieHeader.substring(0, 80) + '...';
+
+      document.getElementById('status').innerHTML = `
+        <div class="label">✅ Sesja przechwycona (${data.allCookies.length} cookies)</div>
+        ${data.allCookies.map(c =>
+          `<div class="row">${c.name}: <span>${c.value.substring(0,45)}${c.value.length > 45 ? '...' : ''}</span></div>`
+        ).join('')}
+        <div class="cookie-box">Cookie: ${preview}</div>
+        <button class="copy-btn" onclick="copyCookie()">📋 Kopiuj Cookie header</button>
+      `;
+
+      document.getElementById('btn').disabled = false;
+      document.getElementById('btn').textContent = '🔄 Zaloguj ponownie';
+      document.getElementById('viewClassesBtn').style.display = 'block';
+    });
+
+    function copyCookie() {
+      navigator.clipboard.writeText('Cookie: ' + savedCookieHeader);
+      event.target.textContent = '✅ Skopiowano!';
+      setTimeout(() => event.target.textContent = '📋 Kopiuj Cookie header', 2000);
+    }
+
+    function viewClasses() {
+      ipcRenderer.send('open-classes-window', { cookieHeader: savedCookieHeader });
+    }
+  </script>
+</body>
+</html>
